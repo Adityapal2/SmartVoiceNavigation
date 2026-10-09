@@ -23,6 +23,7 @@ import {
   Linking,
 } from "react-native";
 
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as Location from "expo-location";
@@ -36,10 +37,13 @@ import MapView, {
 
 import { Ionicons } from "@expo/vector-icons";
 
+
 import {
   setNavigationListener,
   clearNavigation,
+  type NavigationRequest,
 } from "../../services/navigation";
+
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 
@@ -1536,12 +1540,23 @@ ${locationStatus}`,
   // LISTEN FOR VOICE COMMANDS
   // ==================================================
 
-  useEffect(() => {
-    const unsubscribe = setNavigationListener((payload: { destination: string }) => {
-      void navigationHandlerRef.current?.(payload);
-    });
-    return unsubscribe;
-  }, []);
+ 
+useEffect(() => {
+  const unsubscribe = setNavigationListener((payload: NavigationRequest) => {
+    if (payload.type === "navigate") {
+      void navigationHandlerRef.current?.({
+        destination: payload.destination,
+      });
+      return;
+    }
+
+    if (payload.type === "nearby") {
+      void handleCategorySearch(payload.category);
+    }
+  });
+
+  return unsubscribe;
+}, [handleCategorySearch]);
 
 
   // ==================================================

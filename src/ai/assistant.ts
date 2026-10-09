@@ -295,10 +295,6 @@ const isCancelNavigation = (
     "रास्ता बंद करो",
     "रास्ता रोक",
     "रास्ता रोक दो",
-    "नेविगेशन बंद",
-    "नेविगेशन बंद करो",
-    "नेविगेशन रोक",
-    "नेविगेशन रोक दो",
     "स्टॉप नेविगेशन",
     "स्टॉप नेविगेशन करो",
     "नेविगेशन स्टॉप",
@@ -633,12 +629,7 @@ const extractDestination = (
   }
 
   // ==========================================================
-  // HINDI:
-  //
-  // पानीपत जाने का रास्ता
-  // पानीपत जाने का रास्ता लगाओ
-  // अमेरिका जाने का रास्ता लगाइए
-  // दिल्ली जाने का रास्ता बताइए
+  // HINDI ROUTE PATTERNS
   // ==========================================================
 
   const hindiRoutePatterns = [
@@ -691,12 +682,7 @@ const extractDestination = (
   }
 
   // ==========================================================
-  // HINDI:
-  //
-  // पानीपत का रास्ता बताओ
-  // पानीपत का रास्ता लगाओ
-  // पानीपत का रूट बताइए
-  // मुझे पानीपत का रास्ता बताओ
+  // HINDI ROUTE PATTERNS 2
   // ==========================================================
 
   const hindiRoutePatterns2 = [
@@ -1488,7 +1474,7 @@ const parseGeminiResult = (
   return {
     reply:
       typeof data?.reply === "string" &&
-        data.reply.trim()
+      data.reply.trim()
         ? data.reply.trim()
         : "I couldn't understand that command.",
 
@@ -1496,13 +1482,13 @@ const parseGeminiResult = (
 
     destination:
       typeof data?.destination === "string" &&
-        data.destination.trim()
+      data.destination.trim()
         ? data.destination.trim()
         : undefined,
 
     category:
       typeof data?.category === "string" &&
-        data.category.trim()
+      data.category.trim()
         ? data.category.trim()
         : undefined,
   };
@@ -1522,13 +1508,7 @@ const askGeminiBackend = async (
   try {
     let lastError: unknown = null;
 
-<<<<<<< HEAD
-    // Retry transient backend/API failures once before falling back
-    // to the local command parser.
-=======
-    // Retry transient backend/API failures once
-    // before using local fallback.
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
+    // Retry transient backend/API failures once before using local fallback
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await fetch(
@@ -1550,12 +1530,6 @@ const askGeminiBackend = async (
             `AI backend returned ${response.status}`
           );
 
-<<<<<<< HEAD
-          // Retry only transient server/rate-limit failures.
-          if ((response.status >= 500 || response.status === 429) && attempt < 2) {
-            lastError = error;
-            await new Promise((resolve) => setTimeout(resolve, 500));
-=======
           // Retry 500+ and 429 errors once
           if (
             (response.status >= 500 ||
@@ -1568,7 +1542,6 @@ const askGeminiBackend = async (
               setTimeout(resolve, 500)
             );
 
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
             continue;
           }
 
@@ -1576,10 +1549,6 @@ const askGeminiBackend = async (
         }
 
         const data = await response.json();
-<<<<<<< HEAD
-        return parseGeminiResult(data);
-=======
-
         const result = parseGeminiResult(data);
 
         // Always prioritize local navigation-stop detection.
@@ -1599,7 +1568,6 @@ const askGeminiBackend = async (
         }
 
         return result;
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
       } catch (error) {
         lastError = error;
 
@@ -1608,33 +1576,22 @@ const askGeminiBackend = async (
         }
 
         const message = String(
-<<<<<<< HEAD
-          error instanceof Error ? error.message : error
-        );
-
-        // Retry network failures and transient backend failures.
-=======
           error instanceof Error
             ? error.message
             : error
         );
 
         // Retry temporary network/backend failures
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
         if (
           message.includes("AI backend returned 5") ||
           message.includes("AI backend returned 429") ||
           message.includes("fetch failed") ||
           message.includes("Network request failed")
         ) {
-<<<<<<< HEAD
-          await new Promise((resolve) => setTimeout(resolve, 500));
-=======
           await new Promise((resolve) =>
             setTimeout(resolve, 500)
           );
 
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
           continue;
         }
 
@@ -1642,14 +1599,10 @@ const askGeminiBackend = async (
       }
     }
 
-<<<<<<< HEAD
-    throw lastError ?? new Error("AI backend request failed");
-=======
     throw (
       lastError ??
       new Error("AI backend request failed")
     );
->>>>>>> 16336d1 (Update SmartVoiceNavigation features)
   } finally {
     clearTimeout(timeout);
   }

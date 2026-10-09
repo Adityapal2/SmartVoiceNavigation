@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
 import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
@@ -20,37 +21,25 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-
-          // Custom SmartVoiceNavigation native package
-          add(VoiceRecognitionPackage())
+          // Packages that cannot be autolinked yet can be added manually here, for example:
+          // add(MyReactNativePackage())
         }
     )
   }
 
   override fun onCreate() {
     super.onCreate()
-
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
-      ReleaseLevel.valueOf(
-        BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase()
-      )
+      ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
-
     loadReactNative(this)
-
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }
 
-  override fun onConfigurationChanged(
-    newConfig: Configuration
-  ) {
+  override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-
-    ApplicationLifecycleDispatcher.onConfigurationChanged(
-      this,
-      newConfig
-    )
+    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
   }
 }

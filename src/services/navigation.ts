@@ -1,255 +1,178 @@
-import * as Location from "expo-location";
 
+import * as Location from "expo-location";
 
 // ==================================================
 // TYPES
 // ==================================================
 
-type NavigationRequest = {
-  destination: string;
-};
+export type NavigationRequest =
+  | {
+      type: "navigate";
+      destination: string;
+    }
+  | {
+      type: "nearby";
+      category: string;
+    };
 
+type NavigationListener = (request: NavigationRequest) => void;
 
 // ==================================================
 // STATE
 // ==================================================
 
-let navigationListener:
-  | ((request: NavigationRequest) => void)
-  | null = null;
+let navigationListener: NavigationListener | null = null;
+let currentNavigation: NavigationRequest | null = null;
+let pendingRequests: NavigationRequest[] = [];
 
-let currentNavigation:
-  | NavigationRequest
-  | null = null;
+// Prevent a broken listener from losing queued requests.
+const MAX_PENDING_REQUESTS = 10;
 
+function dispatchRequest(request: NavigationRequest): boolean {
+  if (!navigationListener) {
+    if (pendingRequests.length >= MAX_PENDING_REQUESTS) {
+      pendingRequests.shift();
+    }
+
+    pendingRequests.push(request);
+    console.log("[Navigation] Request queued:", request.type);
+    return true;
+  }
+
+  try {
+    navigationListener(request);
+    return true;
+  } catch (error) {
+    console.error("[Navigation] Listener error:", error);
+    return false;
+  }
+}
 
 // ==================================================
-// SET MAP NAVIGATION LISTENER
+// REGISTER MAP LISTENER
 // ==================================================
 
 export function setNavigationListener(
-  listener: (
-    request: NavigationRequest
-  ) => void
-) {
+  listener: NavigationListener
+): () => void {
   navigationListener = listener;
 
-  console.log(
-    "[Navigation] Map listener registered"
-  );
+  console.log("[Navigation] Map listener registered");
+
+  // Process queued requests in order.
+  const queued = pendingRequests.splice(0);
+
+  for (const request of queued) {
+    try {
+      listener(request);
+    } catch (error) {
+      console.error("[Navigation] Queued request failed:", error);
+    }
+  }
 
   return () => {
-    if (
-      navigationListener ===
-      listener
-    ) {
+    if (navigationListener === listener) {
       navigationListener = null;
-
-      console.log(
-        "[Navigation] Map listener removed"
-      );
+      console.log("[Navigation] Map listener removed");
     }
   };
 }
 
-
 // ==================================================
-// START IN-APP NAVIGATION
+// START NAVIGATION
 // ==================================================
 
-export async function startNavigation(
+export function startNavigation(
   destination: string
-): Promise<boolean> {
-
-  const trimmed =
-    destination?.trim();
+): boolean {
+  const trimmed = destination?.trim();
 
   if (!trimmed) {
-    console.log(
-      "[Navigation] No destination"
-    );
-
+    console.warn("[Navigation] Empty destination");
     return false;
   }
 
-  currentNavigation = {
+  const request: NavigationRequest = {
+    type: "navigate",
     destination: trimmed,
   };
 
-  console.log(
-    "[Navigation] Starting in-app navigation:",
-    trimmed
-  );
+  currentNavigation = request;
 
+  console.log("[Navigation] Navigate:", trimmed);
 
-  // ----------------------------------------------
-  // Send destination to Map screen
-  // ----------------------------------------------
-
-  if (navigationListener) {
-
-    navigationListener({
-      destination: trimmed,
-    });
-
-    return true;
-  }
-
-
-  console.log(
-    "[Navigation] Map listener not ready"
-  );
-
-  return false;
+  return dispatchRequest(request);
 }
-
 
 // ==================================================
 // SEARCH NEARBY
 // ==================================================
-//
-// IMPORTANT:
-// This does NOT open Google Maps.
-//
-// It sends the search request to your own MapView.
-// Your map screen can then show nearby places.
-//
 
-export async function searchNearby(
-  category: string
-): Promise<boolean> {
-
-  const trimmed =
-    category?.trim();
+export function searchNearby(category: string): boolean {
+  const trimmed = category?.trim();
 
   if (!trimmed) {
-    console.log(
-      "[Navigation] No nearby category"
-    );
-
+    console.warn("[Navigation] Empty nearby category");
     return false;
   }
 
-  console.log(
-    "[Navigation] Searching nearby:",
-    trimmed
-  );
+  console.log("[Navigation] Nearby search:", trimmed);
 
-
-  // ----------------------------------------------
-  // For now, send nearby request through
-  // the same map listener.
-  //
-  // If your MapView listener only accepts
-  // destination, category will be used as
-  // the destination/search request.
-  // ----------------------------------------------
-
-  if (navigationListener) {
-
-    navigationListener({
-      destination: trimmed,
-    });
-
-    return true;
-  }
-
-
-  console.log(
-    "[Navigation] Map listener not ready for nearby search"
-  );
-
-  return false;
+  return dispatchRequest({
+    type: "nearby",
+    category: trimmed,
+  });
 }
-
 
 // ==================================================
 // CURRENT NAVIGATION
 // ==================================================
 
-export function getCurrentNavigation() {
-
+export function getCurrentNavigation(): NavigationRequest | null {
   return currentNavigation;
 }
 
-
 // ==================================================
-// CLEAR NAVIGATION
+// CLEAR / STOP
 // ==================================================
 
-export function clearNavigation() {
-
+export function clearNavigation(): void {
   currentNavigation = null;
-
-  console.log(
-    "[Navigation] Navigation cleared"
-  );
+  console.log("[Navigation] State cleared");
 }
 
+export function stopNavigation(): void {
+  currentNavigation = null;
+  console.log("[Navigation] State stopped");
+}
 
 // ==================================================
 // CURRENT LOCATION
 // ==================================================
 
-export async function getNavigationLocation() {
-
+export async function getNavigationLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
   try {
-
-    const {
-      status,
-    } =
+    const { status } =
       await Location.requestForegroundPermissionsAsync();
 
-    if (
-      status !== "granted"
-    ) {
-
-      console.log(
-        "[Navigation] Location permission denied"
-      );
-
+    if (status !== "granted") {
+      console.warn("[Navigation] Location permission denied");
       return null;
     }
 
-
-    const location =
-      await Location.getCurrentPositionAsync(
-        {
-          accuracy:
-            Location.Accuracy.High,
-        }
-      );
-
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
 
     return {
-      latitude:
-        location.coords.latitude,
-
-      longitude:
-        location.coords.longitude,
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
     };
-
   } catch (error) {
-
-    console.log(
-      "[Navigation] Location error:",
-      error
-    );
-
+    console.error("[Navigation] Location error:", error);
     return null;
   }
-}
-
-
-// ==================================================
-// STOP NAVIGATION
-// ==================================================
-
-export function stopNavigation() {
-
-  currentNavigation = null;
-
-  console.log(
-    "[Navigation] Navigation stopped"
-  );
 }
